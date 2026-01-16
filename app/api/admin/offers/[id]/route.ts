@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 import sql from "@/lib/db"
 
 // PUT: Update an offer (admin only)
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getSession()
@@ -13,17 +13,27 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-    const offerId = parseInt(id)
+    const { id } = context.params
+    const offerId = Number(id)
 
-    if (isNaN(offerId)) {
+    if (Number.isNaN(offerId)) {
       return NextResponse.json({ error: "Invalid offer ID" }, { status: 400 })
     }
 
-    const { title, description, discount_percentage, valid_from, valid_until, is_active } = await request.json()
+    const {
+      title,
+      description,
+      discount_percentage,
+      valid_from,
+      valid_until,
+      is_active,
+    } = await request.json()
 
     if (!title || !description || !valid_from || !valid_until) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
     // Check if offer exists
@@ -37,10 +47,10 @@ export async function PUT(
 
     await sql`
       UPDATE offers
-      SET 
+      SET
         title = ${title},
         description = ${description},
-        discount_percentage = ${discount_percentage || null},
+        discount_percentage = ${discount_percentage ?? null},
         valid_from = ${valid_from},
         valid_until = ${valid_until},
         is_active = ${is_active !== false},
@@ -60,8 +70,8 @@ export async function PUT(
 
 // DELETE: Delete an offer (admin only)
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getSession()
@@ -69,10 +79,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
-    const offerId = parseInt(id)
+    const { id } = context.params
+    const offerId = Number(id)
 
-    if (isNaN(offerId)) {
+    if (Number.isNaN(offerId)) {
       return NextResponse.json({ error: "Invalid offer ID" }, { status: 400 })
     }
 
