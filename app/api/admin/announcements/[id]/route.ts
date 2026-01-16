@@ -4,16 +4,10 @@ import sql from "@/lib/db"
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } | Promise<{ id: string }> }
+  context: any
 ) {
   try {
-    // ✅ Normalize params (Next.js 16 validator fix)
-    const params =
-      context.params instanceof Promise
-        ? await context.params
-        : context.params
-
-    const { id } = params
+    const { id } = context.params
 
     const session = await getSession()
     if (!session || session.userType !== "admin") {
