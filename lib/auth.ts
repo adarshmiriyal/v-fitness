@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs"
+
 import sql from "./db"
 
 const SALT_ROUNDS = 10

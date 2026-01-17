@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Verify user
+    // ✅ Verify user (password check happens here)
     const user = await verifyUser(email, password)
 
     if (!user) {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Create session (cookies handled inside)
+    // ✅ Create session (cookie handled inside createSession)
     await createSession(user.id, user.user_type)
 
     return NextResponse.json({
