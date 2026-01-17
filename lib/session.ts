@@ -16,14 +16,13 @@ export async function createSession(userId: number, userType: string) {
     .setExpirationTime("7d")
     .sign(secret)
 
-  // ✅ MUST await cookies()
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
 
   cookieStore.set("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/", // critical
+    path: "/", // ✅ correct
     maxAge: 60 * 60 * 24 * 7,
   })
 }
@@ -32,7 +31,7 @@ export async function createSession(userId: number, userType: string) {
    GET SESSION (SERVER ONLY)
 ====================== */
 export async function getSession() {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   const token = cookieStore.get("session")?.value
 
   if (!token) return null
@@ -73,6 +72,6 @@ export async function getSession() {
    DELETE SESSION
 ====================== */
 export async function deleteSession() {
-  const cookieStore = await cookies()
-  cookieStore.delete("session", { path: "/" })
+  const cookieStore = cookies()
+  cookieStore.delete("session") // ✅ ONLY ONE ARG
 }
