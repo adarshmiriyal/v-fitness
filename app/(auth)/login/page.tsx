@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft } from "lucide-react"
 
-export default function LoginPage() {
+/* =========================
+   INNER COMPONENT (SAFE)
+========================= */
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -37,6 +40,7 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
     setBlocked(false)
+    setPending(false)
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -48,11 +52,8 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        if (data.blocked) {
-          setBlocked(true)
-        } else if (data.pending) {
-          setPending(true)
-        }
+        if (data.blocked) setBlocked(true)
+        if (data.pending) setPending(true)
         setError(data.error || "Login failed")
         return
       }
@@ -81,7 +82,7 @@ export default function LoginPage() {
           </Link>
           <div className="flex-1">
             <CardTitle className="text-2xl">V FITNESS Login</CardTitle>
-        <CardDescription>Sign in to your account</CardDescription>
+            <CardDescription>Sign in to your account</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -101,7 +102,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* 🔴 BLOCKED MESSAGE (from redirect param or API response) */}
+        {/* 🔴 BLOCKED MESSAGE */}
         {(blockedFromQuery || blocked) && (
           <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             Your account has been blocked by the admin. Please contact support.
@@ -175,10 +176,10 @@ export default function LoginPage() {
 
         <div className="mt-4 space-y-2 text-center text-sm">
           <div>
-          Don't have an account?{" "}
-          <Link href="/signup" className="text-blue-600 hover:underline">
-            Sign up here
-          </Link>
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-blue-600 hover:underline">
+              Sign up here
+            </Link>
           </div>
           <div>
             <Link href="/forgot-password" className="text-blue-600 hover:underline">
@@ -188,12 +189,23 @@ export default function LoginPage() {
         </div>
       </CardContent>
 
-      {/* Developer Credit */}
       <div className="text-center pt-4 border-t border-gray-200 mt-4">
         <p className="text-xs text-gray-500">
-          Developed by <span className="font-semibold text-gray-700">Adarshmiriyal</span>
+          Developed by{" "}
+          <span className="font-semibold text-gray-700">Adarshmiriyal</span>
         </p>
       </div>
     </Card>
+  )
+}
+
+/* =========================
+   PAGE WRAPPER (REQUIRED)
+========================= */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }
