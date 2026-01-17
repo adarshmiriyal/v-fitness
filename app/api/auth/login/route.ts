@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyUser } from "@/lib/auth"
-import { createSession } from "@/lib/session"
+import { createJWT } from "@/lib/session"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Verify user (password check happens here)
+    // ✅ Verify user
     const user = await verifyUser(email, password)
 
     if (!user) {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 🚫 Not approved
+    // 🚫 Not approved member
     if (user.user_type === "member" && user.is_approved === false) {
       return NextResponse.json(
         { error: "Pending admin approval", pending: true },
@@ -39,13 +39,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Create session (cookie handled inside createSession)
-    await createSession(user.id, user.user_type)
+    // ✅ Create JWT (NO cookies here)
+    const token = await createJWT(user.id, user.user_type)
 
-    return NextResponse.json({
+    // ✅ Create response and set cookie HERE
+    const response = NextResponse.json({
       success: true,
       role: user.user_type,
     })
+
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json(
