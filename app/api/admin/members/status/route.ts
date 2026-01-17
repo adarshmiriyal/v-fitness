@@ -3,9 +3,10 @@ import { getSession } from "@/lib/session"
 import sql from "@/lib/db"
 
 export async function PATCH(req: Request) {
+  // ✅ Get session safely
   const session = await getSession()
 
-  // 🔒 Admin only
+  // 🔒 Admin only access
   if (!session || session.userType !== "admin") {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -13,15 +14,25 @@ export async function PATCH(req: Request) {
     )
   }
 
-  const { userId, isApproved } = await req.json()
+  // ✅ Parse body
+  const body = await req.json()
+  const { userId, isApproved } = body as {
+    userId: number
+    isApproved: boolean
+  }
 
-  if (!userId || typeof isApproved !== "boolean") {
+  // 🛑 Validate input
+  if (
+    typeof userId !== "number" ||
+    typeof isApproved !== "boolean"
+  ) {
     return NextResponse.json(
-      { error: "Invalid request" },
+      { error: "Invalid request data" },
       { status: 400 }
     )
   }
 
+  // ✅ Update approval status
   await sql`
     UPDATE users
     SET is_approved = ${isApproved}
