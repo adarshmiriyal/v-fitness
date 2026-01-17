@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import sql from "@/lib/db"
 import { getSession } from "@/lib/session"
 
 // POST: Approve or reject a member (admin only)
 export async function POST(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getSession()
-
+    
     if (!session || session.userType !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = context.params
-    const memberId = Number(id)
-
-    if (Number.isNaN(memberId)) {
+    const { id } = await params
+    const memberId = parseInt(id)
+    
+    if (isNaN(memberId)) {
       return NextResponse.json({ error: "Invalid member ID" }, { status: 400 })
     }
 
@@ -34,7 +34,7 @@ export async function POST(
     const user = await sql`
       SELECT id, user_type FROM users WHERE id = ${memberId}
     `
-
+    
     if (user.length === 0) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 })
     }
@@ -53,11 +53,9 @@ export async function POST(
       WHERE id = ${memberId}
     `
 
-    return NextResponse.json({
-      success: true,
-      message: approve
-        ? "Member approved successfully"
-        : "Member rejected successfully",
+    return NextResponse.json({ 
+      success: true, 
+      message: approve ? "Member approved successfully" : "Member rejected successfully"
     })
   } catch (error: any) {
     console.error("Error updating member approval:", error)
