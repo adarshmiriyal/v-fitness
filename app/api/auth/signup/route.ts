@@ -1,36 +1,67 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createUser, getUserByEmail } from "@/lib/auth"
-import { createSession } from "@/lib/session"
+import { createJWT } from "@/lib/session"
 
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, email, password, age, phoneNumber } = await request.json()
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      age,
+      phone_number,
+    } = await request.json()
 
-    // Validate input
-    if (!email || !password || !firstName || !lastName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    if (!email || !password || !first_name || !last_name) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
-    // Check if user exists
+    // 🚫 Duplicate email check
     const existingUser = await getUserByEmail(email)
     if (existingUser) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 409 })
+      return NextResponse.json(
+        { error: "Email already registered" },
+        { status: 409 }
+      )
     }
 
-    // Create user (is_approved will be false by default for members)
-    const user = await createUser(email, password, firstName, lastName, age, phoneNumber, "member")
+    // ✅ Call createUser with EXACT arguments
+    const user = await createUser(
+      email,
+      password,
+      first_name,
+      last_name,
+      age,
+      phone_number
+    )
 
-    // Don't create session - member needs admin approval first
-    // await createSession(user.id, "member")
+    // ✅ Create JWT
+    const token = await createJWT(user.id, user.user_type)
 
-    return NextResponse.json({ 
-      success: true, 
-      userId: user.id,
-      message: "Account created successfully. Please wait for admin approval before logging in.",
-      pending: true
+    // ✅ Set cookie via NextResponse
+    const response = NextResponse.json({
+      success: true,
+      role: user.user_type,
     })
+
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
+    return response
   } catch (error) {
     console.error("Signup error:", error)
-    return NextResponse.json({ error: "Signup failed" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Signup failed" },
+      { status: 500 }
+    )
   }
 }
