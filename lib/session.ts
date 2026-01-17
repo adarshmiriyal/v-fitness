@@ -12,24 +12,24 @@ const secret = new TextEncoder().encode(
 export async function createSession(userId: number, userType: string) {
   const token = await new SignJWT({ userId, userType })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime("7d")
     .sign(secret)
 
+  // ✅ MUST await cookies()
   const cookieStore = await cookies()
 
-  cookieStore.set({
-    name: "session",
-    value: token,
+  cookieStore.set("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    path: "/",
+    path: "/", // critical
     maxAge: 60 * 60 * 24 * 7,
   })
 }
 
 /* ======================
-   GET SESSION (READ ONLY)
+   GET SESSION (SERVER ONLY)
 ====================== */
 export async function getSession() {
   const cookieStore = await cookies()
@@ -39,12 +39,13 @@ export async function getSession() {
 
   try {
     const { payload } = await jwtVerify(token, secret)
+
     const { userId, userType } = payload as {
       userId: number
       userType: string
     }
 
-    // 🔒 Check that member is still active and approved
+    // 🔒 Validate MEMBER status only
     if (userType === "member") {
       const rows = await sql`
         SELECT is_active, is_approved
@@ -53,23 +54,25 @@ export async function getSession() {
         LIMIT 1
       `
 
-      // If user record is missing, marked inactive, or not approved, treat as no session
-      if (rows.length === 0 || rows[0].is_active === false || rows[0].is_approved === false) {
+      if (
+        rows.length === 0 ||
+        rows[0].is_active !== true ||
+        rows[0].is_approved !== true
+      ) {
         return null
       }
     }
 
     return { userId, userType }
   } catch {
-    // ❌ DO NOT DELETE COOKIES HERE
     return null
   }
 }
 
 /* ======================
-   DELETE SESSION (ONLY WHEN CALLED)
+   DELETE SESSION
 ====================== */
 export async function deleteSession() {
   const cookieStore = await cookies()
-  cookieStore.delete("session")
+  cookieStore.delete("session", { path: "/" })
 }
